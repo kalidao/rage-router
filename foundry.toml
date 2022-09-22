@@ -4,9 +4,16 @@
 
 # The Default Profile
 [profile.default]
-solc_version = '0.8.15'
+solc_version = "0.8.17"
 auto_detect_solc = false
 optimizer_runs = 1_000
+
+# Configure remappings
+remappings = [
+  "@ds=lib/ds-test/src/",
+  "@std=lib/forge-std/src/",
+  "@solbase=lib/solbase/src/"
+]
 
 [fuzz]
 runs = 1_000
