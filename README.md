@@ -1,36 +1,22 @@
 <img align="right" width="150" height="150" top="100" src="./assets/readme.jpg">
 
-# femplate • [![ci](https://github.com/abigger87/femplate/actions/workflows/ci.yml/badge.svg)](https://github.com/abigger87/femplate/actions/workflows/ci.yml) ![license](https://img.shields.io/github/license/abigger87/femplate?label=license) ![solidity](https://img.shields.io/badge/solidity-^0.8.15-lightgrey)
+# 🔥Rage Router⚡ • [![ci](https://github.com/abigger87/femplate/actions/workflows/ci.yml/badge.svg)](https://github.com/abigger87/femplate/actions/workflows/ci.yml) ![license](https://img.shields.io/github/license/kalidao/rage-router?label=license) ![solidity](https://img.shields.io/badge/solidity-^0.8.17-lightgrey)
 
-A **Clean**, **Robust** Template for Foundry Projects.
-
-## Getting Started
-
-Click [`use this template`](https://github.com/abigger87/femplate/generate) to create a new repository with this repo as the initial state.
-
-Or, if your repo already exists, run:
-```sh
-forge init --template https://github.com/abigger87/femplate
-git submodule update --init --recursive
-forge install
-```
-
-Run `./utils/rename.sh` to rename all instances of `femplate` with the name of your project/repository.
+A common router contract for performing moloch-style redemption of all tokens (ERC20/721/1155).
 
 ## Blueprint
 
 ```ml
 lib
 ├─ forge-std — https://github.com/foundry-rs/forge-std
-├─ solmate — https://github.com/Rari-Capital/solmate
+├─ solbase — https://github.com/Sol-DAO/solbase
 scripts
 ├─ Deploy.s.sol — Simple Deployment Script
 src
-├─ Greeter — A Minimal Greeter Contract
+├─ RageRouter — Fair share redemptions for treasury token (ERC20/721/1155) burns
 test
-└─ Greeter.t — Exhaustive Tests
+└─ RageRouter.t — Exhaustive Tests
 ```
-
 
 ## Development
 
@@ -59,7 +45,6 @@ _NOTE: These scripts are required to be _executable_ meaning they must be made e
 
 _NOTE: these scripts will prompt you for the contract name and deployed addresses (when verifying). Also, they use the `-i` flag on `forge` to ask for your private key for deployment. This uses silent mode which keeps your private key from being printed to the console (and visible in logs)._
 
-
 ### First time with Forge/Foundry?
 
 See the official Foundry installation [instructions](https://github.com/foundry-rs/foundry/blob/master/README.md#installation).
@@ -80,17 +65,11 @@ foundryup
 
 🎉 Foundry is installed! 🎉
 
-
 ### Writing Tests with Foundry
 
 With [Foundry](https://github.com/foundry-rs/foundry), all tests are written in Solidity! 🥳
 
 Create a test file for your contract in the `test/` directory.
-
-For example, [`src/Greeter.sol`](./src/Greeter.sol) has its test file defined in [`./test/Greeter.t.sol`](./test/Greeter.t.sol).
-
-To learn more about writing tests in Solidity for Foundry, reference Rari Capital's [solmate](https://github.com/Rari-Capital/solmate/tree/main/src/test) repository created by [@transmissions11](https://twitter.com/transmissions11).
-
 
 ### Configure Foundry
 
@@ -98,11 +77,9 @@ Using [foundry.toml](./foundry.toml), Foundry is easily configurable.
 
 For a full list of configuration options, see the Foundry [configuration documentation](https://github.com/foundry-rs/foundry/blob/master/config/README.md#all-options).
 
-
 ## License
 
-[AGPL-3.0-only](https://github.com/abigger87/femplate/blob/master/LICENSE)
-
+[MIT](https://github.com/kalidao/rage-router/blob/master/LICENSE)
 
 ## Acknowledgements
 
@@ -112,7 +89,6 @@ For a full list of configuration options, see the Foundry [configuration documen
 - [forge-std](https://github.com/brockelmore/forge-std)
 - [forge-template](https://github.com/foundry-rs/forge-template)
 - [foundry-toolchain](https://github.com/foundry-rs/foundry-toolchain)
-
 
 ## Disclaimer
 
