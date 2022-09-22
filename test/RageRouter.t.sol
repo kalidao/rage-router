@@ -5,7 +5,7 @@ import {Standard, RageRouter} from "../src/RageRouter.sol";
 
 import {MockERC20} from "@solbase/test/utils/mocks/MockERC20.sol";
 import {MockERC721Supply} from "@solbase/test/utils/mocks/MockERC721Supply.sol";
-import {MockERC1155} from "@solbase/test/utils/mocks/MockERC1155.sol";
+import {MockERC1155Supply} from "@solbase/test/utils/mocks/MockERC1155Supply.sol";
 
 import "@std/Test.sol";
 
@@ -16,13 +16,14 @@ contract RageRouterTest is Test {
 
     MockERC20 mockGovERC20;
     MockERC721Supply mockGovERC721;
-    MockERC1155 mockGovERC1155;
+    MockERC1155Supply mockGovERC1155;
 
     MockERC20 mockDai;
     MockERC20 mockWeth;
 
     Standard private constant erc20std = Standard.ERC20;
     Standard private constant erc721std = Standard.ERC721;
+    Standard private constant erc1155std = Standard.ERC1155;
 
     address private constant alice = 0x503408564C50b43208529faEf9bdf9794c015d52;
     address public immutable bob = 0x001d3F1ef827552Ae1114027BD3ECF1f086bA0F9;
@@ -37,7 +38,7 @@ contract RageRouterTest is Test {
 
         mockGovERC20 = new MockERC20("Gov", "GOV", 18);
         mockGovERC721 = new MockERC721Supply("Gov", "GOV");
-        mockGovERC1155 = new MockERC1155();
+        mockGovERC1155 = new MockERC1155Supply();
 
         mockDai = new MockERC20("Dai", "DAI", 18);
         mockWeth = new MockERC20("wETH", "WETH", 18);
@@ -52,10 +53,10 @@ contract RageRouterTest is Test {
         // 1 mockGovERC721.
         mockGovERC721.mint(bob, 1);
 
-        // 1 mockGovERC1155.
-        mockGovERC1155.mint(alice, 0, 1, "");
-        // 1 mockGovERC1155.
-        mockGovERC1155.mint(bob, 1, 1, "");
+        // 50 mockGovERC1155.
+        mockGovERC1155.mint(alice, 0, 50 ether, "");
+        // 50 mockGovERC1155.
+        mockGovERC1155.mint(bob, 0, 50 ether, "");
 
         // 1000 mockDai.
         mockDai.mint(address(this), 1000 ether);
@@ -80,7 +81,7 @@ contract RageRouterTest is Test {
         new RageRouter();
     }
 
-    function testRedemptionERC20() public payable {
+    function testRedeemERC20() public payable {
         // Check initial gov balances.
         assertTrue(mockGovERC20.balanceOf(alice) == 50 ether);
         assertTrue(mockGovERC20.totalSupply() == 100 ether);
@@ -88,14 +89,21 @@ contract RageRouterTest is Test {
         // Check initial unredeemed wETH.
         assertTrue(mockWeth.balanceOf(alice) == 0 ether);
         assertTrue(mockWeth.balanceOf(treasury) == 10 ether);
-        
+
         // Set up wETH claim.
         address[] memory singleAsset = new address[](1);
         singleAsset[0] = address(mockWeth);
 
         // Mock alice to redeem gov for wETH.
         startHoax(alice, alice, type(uint256).max);
-        router.redeem(treasury, singleAsset, address(mockGovERC20), erc20std, 0, 25 ether);
+        router.redeem(
+            treasury,
+            singleAsset,
+            address(mockGovERC20),
+            erc20std,
+            0,
+            25 ether
+        );
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -107,31 +115,72 @@ contract RageRouterTest is Test {
         assertTrue(mockWeth.balanceOf(treasury) == 7.5 ether);
     }
 
-    function testRedemptionERC721() public payable {
+    function testRedeemERC721() public payable {
         // Check initial gov balances.
         assertTrue(mockGovERC721.ownerOf(0) == alice);
         assertTrue(mockGovERC721.balanceOf(alice) == 1);
         assertTrue(mockGovERC721.totalSupply() == 2);
-        
+
         // Check initial unredeemed wETH.
         assertTrue(mockWeth.balanceOf(alice) == 0 ether);
         assertTrue(mockWeth.balanceOf(treasury) == 10 ether);
-        
+
         // Set up wETH claim.
         address[] memory singleAsset = new address[](1);
         singleAsset[0] = address(mockWeth);
-        
+
         // Mock alice to redeem gov for wETH.
         startHoax(alice, alice, type(uint256).max);
-        router.redeem(treasury, singleAsset, address(mockGovERC721), erc721std, 0, 1);
+        router.redeem(
+            treasury,
+            singleAsset,
+            address(mockGovERC721),
+            erc721std,
+            0,
+            1
+        );
         vm.stopPrank();
-        /*
+
         // Check resulting gov balances.
-        assertTrue(mockGovERC721.balanceOf(alice) == 0 ether);
-        assertTrue(mockGovERC721.totalSupply() == 1 ether);
-        
+        assertTrue(mockGovERC721.balanceOf(alice) == 0);
+        assertTrue(mockGovERC721.totalSupply() == 1);
+
         // Check resulting redeemed wETH.
         assertTrue(mockWeth.balanceOf(alice) == 5 ether);
-        assertTrue(mockWeth.balanceOf(treasury) == 5 ether);*/
+        assertTrue(mockWeth.balanceOf(treasury) == 5 ether);
+    }
+
+    function testRedeemERC1155() public payable {
+        // Check initial gov balances.
+        assertTrue(mockGovERC1155.balanceOf(alice, 0) == 50 ether);
+        assertTrue(mockGovERC1155.totalSupply(0) == 100 ether);
+
+        // Check initial unredeemed wETH.
+        assertTrue(mockWeth.balanceOf(alice) == 0 ether);
+        assertTrue(mockWeth.balanceOf(treasury) == 10 ether);
+
+        // Set up wETH claim.
+        address[] memory singleAsset = new address[](1);
+        singleAsset[0] = address(mockWeth);
+
+        // Mock alice to redeem gov for wETH.
+        startHoax(alice, alice, type(uint256).max);
+        router.redeem(
+            treasury,
+            singleAsset,
+            address(mockGovERC1155),
+            erc1155std,
+            0,
+            25 ether
+        );
+        vm.stopPrank();
+
+        // Check resulting gov balances.
+        assertTrue(mockGovERC1155.balanceOf(alice, 0) == 25 ether);
+        assertTrue(mockGovERC1155.totalSupply(0) == 75 ether);
+
+        // Check resulting redeemed wETH.
+        assertTrue(mockWeth.balanceOf(alice) == 2.5 ether);
+        assertTrue(mockWeth.balanceOf(treasury) == 7.5 ether);
     }
 }

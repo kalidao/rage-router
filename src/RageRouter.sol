@@ -43,11 +43,11 @@ contract RageRouter is Multicallable {
     );
 
     event Redeem(
-        address indexed redeemer, 
-        address indexed treasury, 
-        address[] assets, 
-        address indexed token, 
-        uint256 id, 
+        address indexed redeemer,
+        address indexed treasury,
+        address[] assets,
+        address indexed token,
+        uint256 id,
         uint256 amount
     );
 
@@ -65,14 +65,15 @@ contract RageRouter is Multicallable {
     /// Storage
     /// -----------------------------------------------------------------------
 
-    mapping(address => mapping(address => mapping(uint256 => uint256))) public redemptions;
+    mapping(address => mapping(address => mapping(uint256 => uint256)))
+        public redemptions;
 
     /// -----------------------------------------------------------------------
     /// Configuration Logic
     /// -----------------------------------------------------------------------
 
     /// @dev Gas savings.
-    constructor() payable {} 
+    constructor() payable {}
 
     /// @notice Configuration for redeemable treasuries.
     /// @param token The redemption token that will be burnt.
@@ -80,8 +81,8 @@ contract RageRouter is Multicallable {
     /// @param start The unix timestamp at which redemption starts.
     /// @dev The caller of this function will be set as the `treasury`.
     function setRedemption(
-        address token, 
-        uint256 id, 
+        address token,
+        uint256 id,
         uint256 start
     ) external payable {
         redemptions[msg.sender][token][id] = start;
@@ -101,9 +102,9 @@ contract RageRouter is Multicallable {
         uint256 id,
         uint256 amount
     ) external payable {
-        if (block.timestamp < redemptions[treasury][token][id]) 
+        if (block.timestamp < redemptions[treasury][token][id])
             revert NotStarted();
-        
+
         uint256 supply;
 
         // Branch on `Standard` of `token` burned in redemption.
@@ -112,7 +113,7 @@ contract RageRouter is Multicallable {
 
             ITokenBurn(token).burnFrom(msg.sender, amount);
         } else if (std == Standard.ERC721) {
-            if (msg.sender != ITokenBalanceSupply(token).ownerOf(id)) 
+            if (msg.sender != ITokenBalanceSupply(token).ownerOf(id))
                 revert NotIdOwner();
 
             if (amount != 1) amount = 1;

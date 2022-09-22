@@ -1,1 +1,4 @@
-GreeterTest:testSetGm() (gas: 107402)
+RageRouterTest:testDeploy() (gas: 632048)
+RageRouterTest:testRedeemERC1155() (gas: 86095)
+RageRouterTest:testRedeemERC20() (gas: 84573)
+RageRouterTest:testRedeemERC721() (gas: 84800)
