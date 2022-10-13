@@ -216,7 +216,7 @@ contract RageRouterTest is Test {
 
         // Mock alice to redeem gov for wETH.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, singleAsset, 1);
+        router.ragequit(treasury, singleAsset, 0);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -258,7 +258,7 @@ contract RageRouterTest is Test {
 
         // Mock alice to redeem gov for wETH/Dai.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, multiAsset, 1);
+        router.ragequit(treasury, multiAsset, 0);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -693,7 +693,7 @@ contract RageRouterTest is Test {
 
         // Mock alice to redeem gov for wETH.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, singleAsset, 1);
+        router.ragequit(treasury, singleAsset, 0);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -737,7 +737,7 @@ contract RageRouterTest is Test {
 
         // Mock alice to redeem gov for wETH/Dai.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, multiAsset, 1);
+        router.ragequit(treasury, multiAsset, 0);
         vm.stopPrank();
 
         // Check resulting gov balances.

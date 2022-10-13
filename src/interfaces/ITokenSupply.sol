@@ -9,6 +9,10 @@ interface ITokenSupply {
 
     function totalSupply() external view returns (uint256);
 
+    /// @dev ERC721.
+
+    function ownerOf(uint256 id) external view returns (address);
+
     /// @dev ERC1155.
 
     function balanceOf(address account, uint256 id)

@@ -83,7 +83,7 @@ contract RageRouter is Multicallable, ReentrancyGuard {
     /// @param token The redemption `token` that will be burnt.
     /// @param std The EIP interface for the redemption `token`.
     /// @param id The ID to set redemption configuration against.
-    /// @dev `id` will be used if the `token` follows ERC721/1155.
+    /// @dev `id` will be used if the `token` follows ERC1155 std.
     /// @param start The unix timestamp at which redemption starts.
     /// @dev The caller of this function will be set as the `treasury`.
     /// @dev If `burner` is zero, ragequit will trigger the `token` burn.
@@ -115,6 +115,7 @@ contract RageRouter is Multicallable, ReentrancyGuard {
     /// @param treasury The vault holding `assets` for redemption.
     /// @param assets Tokens that can be withdrawn from `treasury`.
     /// @param quitAmount The amount of redemption tokens to be burned.
+    /// @dev
     function ragequit(
         address treasury,
         address[] calldata assets,
@@ -144,15 +145,14 @@ contract RageRouter is Multicallable, ReentrancyGuard {
                 safeTransferFrom(red.token, msg.sender, red.burner, quitAmount);
             }
         } else if (red.std == Standard.ERC721) {
-            // We ensure that user passes in single NFT as `quitAmount`.
-            // This prevents gaming the ratio by burning NFT and spoofing
-            // greater share from total.
-            if (quitAmount != 1) quitAmount = 1;
+            // Use `quitAmount` as `id`.
+            if (msg.sender != ITokenSupply(red.token).ownerOf(quitAmount))
+                revert NotOwner();
 
             if (red.burner == address(0)) {
                 supply = ITokenSupply(red.token).totalSupply();
 
-                ITokenBurn(red.token).burn(red.id);
+                ITokenBurn(red.token).burn(quitAmount);
             } else {
                 // The `burner` balance cannot exceed total supply.
                 unchecked {
@@ -161,8 +161,11 @@ contract RageRouter is Multicallable, ReentrancyGuard {
                         ITokenSupply(red.token).balanceOf(red.burner);
                 }
 
-                safeTransferFrom(red.token, msg.sender, red.burner, red.id);
+                safeTransferFrom(red.token, msg.sender, red.burner, quitAmount);
             }
+
+            // Overwrite `quitAmount` `id` to 1 for single NFT burn.
+            quitAmount = 1;
         } else {
             if (red.burner == address(0)) {
                 supply = ITokenSupply(red.token).totalSupply(red.id);
