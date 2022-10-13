@@ -2,7 +2,7 @@
 pragma solidity ^0.8.4;
 
 /// @notice Interface for checking token (ERC20/721/1155) balance and supply.
-interface ITokenBalanceSupply {
+interface ITokenSupply {
     /// @dev ERC20/721.
 
     function balanceOf(address account) external view returns (uint256);
