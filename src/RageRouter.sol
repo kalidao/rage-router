@@ -128,9 +128,12 @@ contract RageRouter is Multicallable, ReentrancyGuard {
 
                 ITokenBurn(red.token).burnFrom(msg.sender, amount);
             } else {
-                supply =
-                    ITokenSupply(red.token).totalSupply() -
-                    ITokenSupply(red.token).balanceOf(red.burner);
+                // The `burner` balance cannot exceed total supply.
+                unchecked {
+                    supply =
+                        ITokenSupply(red.token).totalSupply() -
+                        ITokenSupply(red.token).balanceOf(red.burner);
+                }
 
                 safeTransferFrom(red.token, msg.sender, red.burner, amount);
             }
@@ -145,9 +148,12 @@ contract RageRouter is Multicallable, ReentrancyGuard {
 
                 ITokenBurn(red.token).burn(red.id);
             } else {
-                supply =
-                    ITokenSupply(red.token).totalSupply() -
-                    ITokenSupply(red.token).balanceOf(red.burner);
+                // The `burner` balance cannot exceed total supply.
+                unchecked {
+                    supply =
+                        ITokenSupply(red.token).totalSupply() -
+                        ITokenSupply(red.token).balanceOf(red.burner);
+                }
 
                 safeTransferFrom(red.token, msg.sender, red.burner, red.id);
             }
@@ -157,9 +163,12 @@ contract RageRouter is Multicallable, ReentrancyGuard {
 
                 ITokenBurn(red.token).burn(msg.sender, red.id, amount);
             } else {
-                supply =
-                    ITokenSupply(red.token).totalSupply(red.id) -
-                    ITokenSupply(red.token).balanceOf(red.burner, red.id);
+                // The `burner` balance cannot exceed total supply.
+                unchecked {
+                    supply =
+                        ITokenSupply(red.token).totalSupply(red.id) -
+                        ITokenSupply(red.token).balanceOf(red.burner, red.id);
+                }
 
                 IERC1155STF(red.token).safeTransferFrom(
                     msg.sender,
