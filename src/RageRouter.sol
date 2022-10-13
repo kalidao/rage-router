@@ -6,11 +6,12 @@ import {ITokenBalanceSupply} from "./interfaces/ITokenBalanceSupply.sol";
 import {ITokenBurn} from "./interfaces/ITokenBurn.sol";
 
 /// @dev Libraries.
-import {FixedPointMathLib} from "@solbase/utils/FixedPointMathLib.sol";
-import {SafeTransferLib} from "@solbase/utils/SafeTransferLib.sol";
+import {mulDivDown} from "./utils/MulDivDown.sol";
+import {safeTransferFrom} from "./utils/SafeTransferFrom.sol";
 
 /// @dev Contracts.
-import {Multicallable} from "@solbase/utils/Multicallable.sol";
+import {Multicallable} from "./utils/Multicallable.sol";
+import {ReentrancyGuard} from "./utils/ReentrancyGuard.sol";
 
 /// @title Rage Router
 /// @notice Fair share redemptions for treasury token (ERC20/721/1155) burns.
@@ -22,15 +23,7 @@ enum Standard {
     ERC1155
 }
 
-contract RageRouter is Multicallable {
-    /// -----------------------------------------------------------------------
-    /// Library Usage
-    /// -----------------------------------------------------------------------
-
-    using FixedPointMathLib for uint256;
-
-    using SafeTransferLib for address;
-
+contract RageRouter is Multicallable, ReentrancyGuard {
     /// -----------------------------------------------------------------------
     /// Events
     /// -----------------------------------------------------------------------
@@ -84,7 +77,7 @@ contract RageRouter is Multicallable {
         address token,
         uint256 id,
         uint256 start
-    ) external payable {
+    ) public payable virtual {
         redemptions[msg.sender][token][id] = start;
 
         emit SetRedemption(msg.sender, token, id, start);
@@ -94,14 +87,14 @@ contract RageRouter is Multicallable {
     /// Redemption Logic
     /// -----------------------------------------------------------------------
 
-    function redeem(
+    function ragequit(
         address treasury,
         address[] calldata assets,
         address token,
         Standard std,
         uint256 id,
         uint256 amount
-    ) external payable {
+    ) public payable virtual nonReentrant {
         if (block.timestamp < redemptions[treasury][token][id])
             revert NotStarted();
 
@@ -128,26 +121,26 @@ contract RageRouter is Multicallable {
         }
 
         address prevAddr;
+        address asset;
 
         for (uint256 i; i < assets.length; ) {
-            // Prevent null and duplicate `assets`.
-            if (prevAddr >= assets[i]) revert InvalidAssetOrder();
+            asset = assets[i];
 
-            prevAddr = assets[i];
+            // Prevent null and duplicate `asset`.
+            if (prevAddr >= asset) revert InvalidAssetOrder();
 
-            // Calculate fair share of given `assets` for `amount`.
-            uint256 amountToRedeem = amount.mulDivDown(
-                ITokenBalanceSupply(assets[i]).balanceOf(treasury),
+            prevAddr = asset;
+
+            // Calculate fair share of given `asset` for `amount`.
+            uint256 amountToRedeem = mulDivDown(
+                amount,
+                ITokenBalanceSupply(asset).balanceOf(treasury),
                 supply
             );
 
-            // Transfer fair share from treasury to caller.
+            // Transfer fair share from `treasury` to caller.
             if (amountToRedeem != 0) {
-                assets[i].safeTransferFrom(
-                    treasury,
-                    msg.sender,
-                    amountToRedeem
-                );
+                safeTransferFrom(asset, treasury, msg.sender, amountToRedeem);
             }
 
             // An array can't have a total length
