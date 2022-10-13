@@ -15,8 +15,7 @@ import {Multicallable} from "./utils/Multicallable.sol";
 import {ReentrancyGuard} from "./utils/ReentrancyGuard.sol";
 
 /// @title Rage Router
-/// @notice Fair share redemptions for treasury token (ERC20/721/1155) burns.
-/// @dev Modified from Moloch Ventures (https://github.com/MolochVentures/moloch)
+/// @notice Fair share ragequit redemption for any token burn.
 
 enum Standard {
     ERC20,
@@ -24,6 +23,9 @@ enum Standard {
     ERC1155
 }
 
+/// @author z0r0z.eth
+/// @custom:coauthor ameen.eth
+/// @custom:coauthor mick.eth
 contract RageRouter is Multicallable, ReentrancyGuard {
     /// -----------------------------------------------------------------------
     /// Events
@@ -76,7 +78,7 @@ contract RageRouter is Multicallable, ReentrancyGuard {
     /// @dev Gas savings.
     constructor() payable {}
 
-    /// @notice Configuration for redeemable treasuries.
+    /// @notice Configuration for ragequittable treasuries.
     /// @param burner The redemption sink for burnt `token`.
     /// @param token The redemption `token` that will be burnt.
     /// @param std The EIP interface for the redemption `token`.
@@ -106,13 +108,17 @@ contract RageRouter is Multicallable, ReentrancyGuard {
     }
 
     /// -----------------------------------------------------------------------
-    /// Redemption Logic
+    /// Ragequit Logic
     /// -----------------------------------------------------------------------
 
+    /// @notice Allows ragequit redemption against `treasury`.
+    /// @param treasury The vault holding `assets` for redemption.
+    /// @param assets Tokens that can be withdrawn from `treasury`.
+    /// @param quitAmount The amount of redemption tokens to be burned.
     function ragequit(
         address treasury,
         address[] calldata assets,
-        uint256 amount
+        uint256 quitAmount
     ) public payable virtual nonReentrant {
         Redemption storage red = redemptions[treasury];
 
@@ -126,7 +132,7 @@ contract RageRouter is Multicallable, ReentrancyGuard {
             if (red.burner == address(0)) {
                 supply = ITokenSupply(red.token).totalSupply();
 
-                ITokenBurn(red.token).burnFrom(msg.sender, amount);
+                ITokenBurn(red.token).burnFrom(msg.sender, quitAmount);
             } else {
                 // The `burner` balance cannot exceed total supply.
                 unchecked {
@@ -135,13 +141,13 @@ contract RageRouter is Multicallable, ReentrancyGuard {
                         ITokenSupply(red.token).balanceOf(red.burner);
                 }
 
-                safeTransferFrom(red.token, msg.sender, red.burner, amount);
+                safeTransferFrom(red.token, msg.sender, red.burner, quitAmount);
             }
         } else if (red.std == Standard.ERC721) {
-            // We ensure that user passes in single NFT as `amount`.
+            // We ensure that user passes in single NFT as `quitAmount`.
             // This prevents gaming the ratio by burning NFT and spoofing
             // greater share from total.
-            if (amount != 1) amount = 1;
+            if (quitAmount != 1) quitAmount = 1;
 
             if (red.burner == address(0)) {
                 supply = ITokenSupply(red.token).totalSupply();
@@ -161,7 +167,7 @@ contract RageRouter is Multicallable, ReentrancyGuard {
             if (red.burner == address(0)) {
                 supply = ITokenSupply(red.token).totalSupply(red.id);
 
-                ITokenBurn(red.token).burn(msg.sender, red.id, amount);
+                ITokenBurn(red.token).burn(msg.sender, red.id, quitAmount);
             } else {
                 // The `burner` balance cannot exceed total supply.
                 unchecked {
@@ -174,7 +180,7 @@ contract RageRouter is Multicallable, ReentrancyGuard {
                     msg.sender,
                     red.burner,
                     red.id,
-                    amount,
+                    quitAmount,
                     ""
                 );
             }
@@ -191,9 +197,9 @@ contract RageRouter is Multicallable, ReentrancyGuard {
 
             prevAddr = asset;
 
-            // Calculate fair share of given `asset` for `amount`.
+            // Calculate fair share of given `asset` for `quitAmount`.
             uint256 amountToRedeem = mulDivDown(
-                amount,
+                quitAmount,
                 ITokenSupply(asset).balanceOf(treasury),
                 supply
             );
@@ -210,6 +216,6 @@ contract RageRouter is Multicallable, ReentrancyGuard {
             }
         }
 
-        emit Ragequit(msg.sender, treasury, assets, amount);
+        emit Ragequit(msg.sender, treasury, assets, quitAmount);
     }
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-/// @notice Interface for checking token (ERC20/721/1155) balance and supply.
+/// @notice Interface for fetching token (ERC20/721/1155) balances and supply.
 interface ITokenSupply {
     /// @dev ERC20/721.
 
