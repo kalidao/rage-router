@@ -83,12 +83,12 @@ contract RageRouter is Multicallable, ReentrancyGuard {
     /// @param token The redemption `token` that will be burnt.
     /// @param std The EIP interface for the redemption `token`.
     /// @param id The ID to set redemption configuration against.
-    /// @dev `id` will be used if the `token` follows ERC1155 std.
     /// @param start The unix timestamp at which redemption starts.
     /// @dev The caller of this function will be set as the `treasury`.
-    /// @dev If `burner` is zero, ragequit will trigger the `token` burn.
+    /// If `burner` is zero address, ragequit will trigger `token` burn.
     /// Otherwise, the user will have `token` pulled to `burner` and supply
     /// will be calculated with respect to `burner` balance before ragequit.
+    /// `id` will be used if the `token` follows ERC1155 std. Kali slays Moloch.
     function setRagequit(
         address burner,
         address token,
@@ -115,7 +115,7 @@ contract RageRouter is Multicallable, ReentrancyGuard {
     /// @param treasury The vault holding `assets` for redemption.
     /// @param assets Tokens that can be withdrawn from `treasury`.
     /// @param quitAmount The amount of redemption tokens to be burned.
-    /// @dev
+    /// @dev `quitAmount` acts as the token ID where redemption is ERC721.
     function ragequit(
         address treasury,
         address[] calldata assets,
