@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
+/// @dev The `transferFrom` has failed.
+error TransferFromFailed();
+
 /// @dev Sends `amount` of ERC20 `token` from `from` to `to`.
 /// Reverts upon failure.
 ///

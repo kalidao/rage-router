@@ -6,7 +6,7 @@ import {IERC1155STF} from "./interfaces/IERC1155STF.sol";
 import {ITokenBurn} from "./interfaces/ITokenBurn.sol";
 import {ITokenSupply} from "./interfaces/ITokenSupply.sol";
 
-/// @dev Libraries.
+/// @dev Free functions.
 import {mulDivDown} from "./utils/MulDivDown.sol";
 import {safeTransferFrom} from "./utils/SafeTransferFrom.sol";
 
@@ -64,9 +64,9 @@ contract RageRouter is Multicallable, ReentrancyGuard {
     struct Redemption {
         address burner;
         address token;
+        uint88 start;
         Standard std;
         uint256 id;
-        uint256 start;
     }
 
     /// -----------------------------------------------------------------------
@@ -77,12 +77,16 @@ contract RageRouter is Multicallable, ReentrancyGuard {
     constructor() payable {}
 
     /// @notice Configuration for redeemable treasuries.
-    /// @param burner The redemption sink for burnt token.
-    /// @param token The redemption token that will be burnt.
+    /// @param burner The redemption sink for burnt `token`.
+    /// @param token The redemption `token` that will be burnt.
+    /// @param std The EIP interface for the redemption `token`.
     /// @param id The ID to set redemption configuration against.
+    /// @dev `id` will be used if the `token` follows ERC721/1155.
     /// @param start The unix timestamp at which redemption starts.
     /// @dev The caller of this function will be set as the `treasury`.
-    /// @dev If `burner` is zero, then normal ragequit will be triggered.
+    /// @dev If `burner` is zero, ragequit will trigger the `token` burn.
+    /// Otherwise, the user will have `token` pulled to `burner` and supply
+    /// will be calculated with respect to `burner` balance before ragequit.
     function setRagequit(
         address burner,
         address token,
@@ -93,9 +97,9 @@ contract RageRouter is Multicallable, ReentrancyGuard {
         redemptions[msg.sender] = Redemption({
             burner: burner,
             token: token,
+            start: uint88(start),
             std: std,
-            id: id,
-            start: start
+            id: id
         });
 
         emit SetRagequit(msg.sender, burner, token, std, id, start);
@@ -116,11 +120,9 @@ contract RageRouter is Multicallable, ReentrancyGuard {
 
         uint256 supply;
 
-        // Branch on `Standard` of `token` burned in redemption.
-        // If `burner` is zero, we burn - else, we transfer to `burner`.
+        // Branch on `Standard` of `token` burned in redemption
+        // and whether `burner` is zero address.
         if (red.std == Standard.ERC20) {
-            supply = ITokenSupply(red.token).totalSupply();
-
             if (red.burner == address(0)) {
                 supply = ITokenSupply(red.token).totalSupply();
 
@@ -133,9 +135,9 @@ contract RageRouter is Multicallable, ReentrancyGuard {
                 safeTransferFrom(red.token, msg.sender, red.burner, amount);
             }
         } else if (red.std == Standard.ERC721) {
-            if (msg.sender != ITokenSupply(red.token).ownerOf(red.id))
-                revert NotOwner();
-
+            // We ensure that user passes in single NFT as `amount`.
+            // This prevents gaming the ratio by burning NFT and spoofing
+            // greater share from total.
             if (amount != 1) amount = 1;
 
             if (red.burner == address(0)) {
