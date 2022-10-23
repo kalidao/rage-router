@@ -916,7 +916,7 @@ contract RageRouterTest is Test {
 
         // Expect revert in underflow for Alice repeat.
         startHoax(alice, alice, type(uint256).max);
-        vm.expectRevert();
+        vm.expectRevert(0x7939f424);
         router.ragequit(treasury, singleAsset, 25 ether);
         vm.stopPrank();
 

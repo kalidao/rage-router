@@ -23,6 +23,7 @@ enum Standard {
     ERC1155
 }
 
+/// @notice Moloch-style redemption router in all tokens (ERC20/721/1155).
 /// @author z0r0z.eth
 /// @custom:coauthor ameen.eth
 /// @custom:coauthor mick.eth
