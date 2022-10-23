@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-import {DSTestPlus} from "@solbase/utils/DSTestPlus.sol";
+import {DSTestPlus} from "@solbase/test/utils/DSTestPlus.sol";
 
-import {ReentrancyGuard} from "../src/utils/ReentrancyGuard.sol";
+import {ReentrancyGuard} from "@solbase/src/utils/ReentrancyGuard.sol";
 
 contract RiskyContract is ReentrancyGuard {
     uint256 public enterTimes;

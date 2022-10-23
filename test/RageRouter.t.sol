@@ -3,10 +3,10 @@ pragma solidity ^0.8.4;
 
 import {Standard, RageRouter} from "../src/RageRouter.sol";
 
-import {MockERC20} from "@solbase/utils/mocks/MockERC20.sol";
-import {MockERC721Supply} from "@solbase/utils/mocks/MockERC721Supply.sol";
-import {MockERC1155Supply} from "@solbase/utils/mocks/MockERC1155Supply.sol";
-import {MockERC1271Wallet} from "@solbase/utils/mocks/MockERC1271Wallet.sol";
+import {MockERC20} from "@solbase/test/utils/mocks/MockERC20.sol";
+import {MockERC721Supply} from "@solbase/test/utils/mocks/MockERC721Supply.sol";
+import {MockERC1155Supply} from "@solbase/test/utils/mocks/MockERC1155Supply.sol";
+import {MockERC1271Wallet} from "@solbase/test/utils/mocks/MockERC1271Wallet.sol";
 
 import "@std/Test.sol";
 

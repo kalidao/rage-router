@@ -8,7 +8,7 @@ optimizer_runs = 999999
 remappings = [
   "@ds=lib/ds-test/src/",
   "@std=lib/forge-std/src/",
-  "@solbase=lib/solbase/test/"
+  "@solbase=lib/solbase/"
 ]
 
 [fuzz]
