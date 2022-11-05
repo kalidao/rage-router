@@ -1,5 +1,6 @@
-cache/
-out/
+cache
+out
+node_modules
 
 # Ignore Environment Variables!
 .env

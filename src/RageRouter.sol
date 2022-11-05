@@ -216,7 +216,7 @@ contract RageRouter is Multicallable, ReentrancyGuard {
             );
 
             // Transfer fair share from `treasury` to caller.
-            if (amountToRedeem != 0)
+            if (amountToRedeem != 0) {
                 draw.std == Standard.ERC20
                     ? safeTransferFrom(
                         draw.asset,
@@ -231,6 +231,7 @@ contract RageRouter is Multicallable, ReentrancyGuard {
                         amountToRedeem,
                         ""
                     );
+            }
 
             // An array can't have a total length
             // larger than the max uint256 value.
