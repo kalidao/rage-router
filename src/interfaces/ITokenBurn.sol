@@ -11,9 +11,5 @@ interface ITokenBurn {
     function burn(uint256 id) external;
 
     /// @dev ERC1155.
-    function burn(
-        address from,
-        uint256 id,
-        uint256 amount
-    ) external;
+    function burn(address from, uint256 id, uint256 amount) external;
 }

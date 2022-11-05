@@ -7,7 +7,7 @@ import {ITokenBurn} from "./interfaces/ITokenBurn.sol";
 import {ITokenSupply} from "./interfaces/ITokenSupply.sol";
 
 /// @dev Free functions.
-import {mulDivDown} from "./utils/MulDivDown.sol";
+import {mulDivDown} from "@solbase/src/utils/FixedPointMath.sol";
 import {safeTransferFrom} from "@solbase/src/utils/SafeTransfer.sol";
 
 /// @dev Contracts.
@@ -23,6 +23,20 @@ enum Standard {
     ERC1155
 }
 
+struct Redemption {
+    address burner;
+    address token;
+    uint88 start;
+    Standard std;
+    uint256 id;
+}
+
+struct Withdrawal {
+    address asset;
+    Standard std;
+    uint256 id;
+}
+
 /// @author z0r0z.eth
 /// @custom:coauthor ameen.eth
 /// @custom:coauthor mick.eth
@@ -31,7 +45,7 @@ contract RageRouter is Multicallable, ReentrancyGuard {
     /// Events
     /// -----------------------------------------------------------------------
 
-    event SetRagequit(
+    event RagequitSet(
         address indexed treasury,
         address indexed burner,
         address indexed token,
@@ -43,7 +57,7 @@ contract RageRouter is Multicallable, ReentrancyGuard {
     event Ragequit(
         address indexed redeemer,
         address indexed treasury,
-        address[] assets,
+        Withdrawal[] withdrawals,
         uint256 amount
     );
 
@@ -58,18 +72,10 @@ contract RageRouter is Multicallable, ReentrancyGuard {
     error NotOwner();
 
     /// -----------------------------------------------------------------------
-    /// Storage
+    /// Ragequit Storage
     /// -----------------------------------------------------------------------
 
     mapping(address => Redemption) public redemptions;
-
-    struct Redemption {
-        address burner;
-        address token;
-        uint88 start;
-        Standard std;
-        uint256 id;
-    }
 
     /// -----------------------------------------------------------------------
     /// Configuration Logic
@@ -104,7 +110,7 @@ contract RageRouter is Multicallable, ReentrancyGuard {
             id: id
         });
 
-        emit SetRagequit(msg.sender, burner, token, std, id, start);
+        emit RagequitSet(msg.sender, burner, token, std, id, start);
     }
 
     /// -----------------------------------------------------------------------
@@ -113,12 +119,12 @@ contract RageRouter is Multicallable, ReentrancyGuard {
 
     /// @notice Allows ragequit redemption against `treasury`.
     /// @param treasury The vault holding `assets` for redemption.
-    /// @param assets Tokens that can be withdrawn from `treasury`.
+    /// @param withdrawals Withdrawal instructions for `treasury`.
     /// @param quitAmount The amount of redemption tokens to be burned.
     /// @dev `quitAmount` acts as the token ID where redemption is ERC721.
     function ragequit(
         address treasury,
-        address[] calldata assets,
+        Withdrawal[] calldata withdrawals,
         uint256 quitAmount
     ) public payable virtual nonReentrant {
         Redemption storage red = redemptions[treasury];
@@ -190,27 +196,41 @@ contract RageRouter is Multicallable, ReentrancyGuard {
         }
 
         address prevAddr;
-        address asset;
+        Withdrawal calldata draw;
 
-        for (uint256 i; i < assets.length; ) {
-            asset = assets[i];
+        for (uint256 i; i < withdrawals.length; ) {
+            draw = withdrawals[i];
 
             // Prevent null and duplicate `asset`.
-            if (prevAddr >= asset) revert InvalidAssetOrder();
+            if (prevAddr >= draw.asset) revert InvalidAssetOrder();
 
-            prevAddr = asset;
+            prevAddr = draw.asset;
 
             // Calculate fair share of given `asset` for `quitAmount`.
             uint256 amountToRedeem = mulDivDown(
                 quitAmount,
-                ITokenSupply(asset).balanceOf(treasury),
+                draw.std == Standard.ERC20
+                    ? ITokenSupply(draw.asset).balanceOf(treasury)
+                    : ITokenSupply(draw.asset).balanceOf(treasury, draw.id),
                 supply
             );
 
             // Transfer fair share from `treasury` to caller.
-            if (amountToRedeem != 0) {
-                safeTransferFrom(asset, treasury, msg.sender, amountToRedeem);
-            }
+            if (amountToRedeem != 0)
+                draw.std == Standard.ERC20
+                    ? safeTransferFrom(
+                        draw.asset,
+                        treasury,
+                        msg.sender,
+                        amountToRedeem
+                    )
+                    : IERC1155STF(draw.asset).safeTransferFrom(
+                        treasury,
+                        msg.sender,
+                        draw.id,
+                        amountToRedeem,
+                        ""
+                    );
 
             // An array can't have a total length
             // larger than the max uint256 value.
@@ -219,6 +239,6 @@ contract RageRouter is Multicallable, ReentrancyGuard {
             }
         }
 
-        emit Ragequit(msg.sender, treasury, assets, quitAmount);
+        emit Ragequit(msg.sender, treasury, withdrawals, quitAmount);
     }
 }
