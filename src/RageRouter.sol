@@ -132,6 +132,8 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
 
         if (block.timestamp < red.start) revert NotStarted();
 
+        emit Ragequit(msg.sender, treasury, withdrawals, quitAmount);
+
         uint256 supply;
 
         // Branch on `Standard` of `token` burned in redemption
@@ -240,7 +242,5 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
                 ++i;
             }
         }
-
-        emit Ragequit(msg.sender, treasury, withdrawals, quitAmount);
     }
 }
