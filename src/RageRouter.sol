@@ -11,6 +11,7 @@ import {mulDivDown} from "@solbase/src/utils/FixedPointMath.sol";
 import {safeTransferFrom} from "@solbase/src/utils/SafeTransfer.sol";
 
 /// @dev Contracts.
+import {SelfPermit} from "@solbase/src/utils/SelfPermit.sol";
 import {Multicallable} from "@solbase/src/utils/Multicallable.sol";
 import {ReentrancyGuard} from "@solbase/src/utils/ReentrancyGuard.sol";
 
@@ -40,7 +41,7 @@ struct Withdrawal {
 /// @author z0r0z.eth
 /// @custom:coauthor ameen.eth
 /// @custom:coauthor mick.eth
-contract RageRouter is Multicallable, ReentrancyGuard {
+contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
     /// -----------------------------------------------------------------------
     /// Events
     /// -----------------------------------------------------------------------
