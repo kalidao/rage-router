@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "lint": "prettier --write src/**.sol src/interfaces/**.sol test/**.sol"
+    "lint": "prettier --write src/**.sol src/utils/**.sol test/**.sol"
   },
   "devDependencies": {
     "prettier": "^2.7.1",

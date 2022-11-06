@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-/// @dev Interfaces.
-import {IERC1155STF} from "./interfaces/IERC1155STF.sol";
-import {ITokenBurn} from "./interfaces/ITokenBurn.sol";
-import {ITokenSupply} from "./interfaces/ITokenSupply.sol";
+/// @dev Contract Helpers.
+import {ERC1155STF} from "./utils/ERC1155STF.sol";
+import {TokenBurn} from "./utils/TokenBurn.sol";
+import {TokenSupply} from "./utils/TokenSupply.sol";
 
 /// @dev Free functions.
 import {mulDivDown} from "@solbase/src/utils/FixedPointMath.sol";
@@ -138,34 +138,34 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
         // and whether `burner` is zero address.
         if (red.std == Standard.ERC20) {
             if (red.burner == address(0)) {
-                supply = ITokenSupply(red.token).totalSupply();
+                supply = TokenSupply(red.token).totalSupply();
 
-                ITokenBurn(red.token).burnFrom(msg.sender, quitAmount);
+                TokenBurn(red.token).burnFrom(msg.sender, quitAmount);
             } else {
                 // The `burner` balance cannot exceed total supply.
                 unchecked {
                     supply =
-                        ITokenSupply(red.token).totalSupply() -
-                        ITokenSupply(red.token).balanceOf(red.burner);
+                        TokenSupply(red.token).totalSupply() -
+                        TokenSupply(red.token).balanceOf(red.burner);
                 }
 
                 safeTransferFrom(red.token, msg.sender, red.burner, quitAmount);
             }
         } else if (red.std == Standard.ERC721) {
             // Use `quitAmount` as `id`.
-            if (msg.sender != ITokenSupply(red.token).ownerOf(quitAmount))
+            if (msg.sender != TokenSupply(red.token).ownerOf(quitAmount))
                 revert NotOwner();
 
             if (red.burner == address(0)) {
-                supply = ITokenSupply(red.token).totalSupply();
+                supply = TokenSupply(red.token).totalSupply();
 
-                ITokenBurn(red.token).burn(quitAmount);
+                TokenBurn(red.token).burn(quitAmount);
             } else {
                 // The `burner` balance cannot exceed total supply.
                 unchecked {
                     supply =
-                        ITokenSupply(red.token).totalSupply() -
-                        ITokenSupply(red.token).balanceOf(red.burner);
+                        TokenSupply(red.token).totalSupply() -
+                        TokenSupply(red.token).balanceOf(red.burner);
                 }
 
                 safeTransferFrom(red.token, msg.sender, red.burner, quitAmount);
@@ -175,18 +175,18 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
             quitAmount = 1;
         } else {
             if (red.burner == address(0)) {
-                supply = ITokenSupply(red.token).totalSupply(red.id);
+                supply = TokenSupply(red.token).totalSupply(red.id);
 
-                ITokenBurn(red.token).burn(msg.sender, red.id, quitAmount);
+                TokenBurn(red.token).burn(msg.sender, red.id, quitAmount);
             } else {
                 // The `burner` balance cannot exceed total supply.
                 unchecked {
                     supply =
-                        ITokenSupply(red.token).totalSupply(red.id) -
-                        ITokenSupply(red.token).balanceOf(red.burner, red.id);
+                        TokenSupply(red.token).totalSupply(red.id) -
+                        TokenSupply(red.token).balanceOf(red.burner, red.id);
                 }
 
-                IERC1155STF(red.token).safeTransferFrom(
+                ERC1155STF(red.token).safeTransferFrom(
                     msg.sender,
                     red.burner,
                     red.id,
@@ -211,8 +211,8 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
             uint256 amountToRedeem = mulDivDown(
                 quitAmount,
                 draw.std == Standard.ERC20
-                    ? ITokenSupply(draw.asset).balanceOf(treasury)
-                    : ITokenSupply(draw.asset).balanceOf(treasury, draw.id),
+                    ? TokenSupply(draw.asset).balanceOf(treasury)
+                    : TokenSupply(draw.asset).balanceOf(treasury, draw.id),
                 supply
             );
 
@@ -225,7 +225,7 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
                         msg.sender,
                         amountToRedeem
                     )
-                    : IERC1155STF(draw.asset).safeTransferFrom(
+                    : ERC1155STF(draw.asset).safeTransferFrom(
                         treasury,
                         msg.sender,
                         draw.id,
