@@ -2,7 +2,8 @@
 [profile.default]
 solc_version = "0.8.17"
 auto_detect_solc = false
-optimizer_runs = 999999
+optimizer_runs = 9999999
+via_ir = true
 
 # Configure remappings
 remappings = [
