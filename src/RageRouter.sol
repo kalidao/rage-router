@@ -528,11 +528,13 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
 
     function _recoverSig(
         bytes32 hash,
-        address redeemer,
+        address user,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) internal view virtual {
+        if (user == address(0)) revert InvalidSig();
+
         address signer;
 
         // Perform signature recovery via ecrecover.
@@ -565,8 +567,8 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
             mstore(0x40, m)
         }
 
-        // If recovery doesn't match `redeemer`, verify contract signature with ERC1271.
-        if (redeemer != signer) {
+        // If recovery doesn't match `user`, verify contract signature with ERC1271.
+        if (user != signer) {
             bool valid;
 
             assembly {
@@ -597,7 +599,7 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
                     // as the arguments are evaluated from right to left.
                     staticcall(
                         gas(), // Remaining gas.
-                        redeemer, // The `redeemer` address.
+                        user, // The `user` address.
                         m, // Offset of calldata in memory.
                         0xa5, // Length of calldata in memory.
                         0x00, // Offset of returndata.
