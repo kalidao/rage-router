@@ -57,6 +57,7 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
         address indexed redeemer,
         address indexed treasury,
         address indexed token,
+        uint256 id,
         Withdrawal[] withdrawals,
         uint256 quitAmount
     );
@@ -191,9 +192,8 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
                     keccak256(
                         abi.encode(
                             keccak256(
-                                "SetRagequit(address treasury,address burner,address token,uint8 std,uint256 id,int88 trigger)"
+                                "SetRagequit(address burner,address token,uint8 std,uint256 id,int88 trigger,uint256 nonce)"
                             ),
-                            treasury,
                             burner,
                             token,
                             std,
@@ -238,13 +238,13 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
     ) public payable virtual nonReentrant {
         Redemption storage red = redemptions[treasury][token][id];
 
-        uint88 trigger = uint88(red.trigger);
-
         if (
-            trigger >= 0 ? block.timestamp < trigger : block.timestamp > trigger
+            red.trigger >= 0
+                ? block.timestamp < uint88(red.trigger)
+                : block.timestamp > uint88(red.trigger)
         ) revert Triggered();
 
-        emit Ragequit(msg.sender, treasury, token, withdrawals, quitAmount);
+        emit Ragequit(msg.sender, treasury, token, id, withdrawals, quitAmount);
 
         uint256 supply;
 
@@ -382,10 +382,10 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
     ) public payable virtual nonReentrant {
         Redemption storage red = redemptions[treasury][token][id];
 
-        uint88 trigger = uint88(red.trigger);
-
         if (
-            trigger >= 0 ? block.timestamp < trigger : block.timestamp > trigger
+            red.trigger >= 0
+                ? block.timestamp < uint88(red.trigger)
+                : block.timestamp > uint88(red.trigger)
         ) revert Triggered();
 
         // Unchecked because the only math done is incrementing
@@ -398,10 +398,11 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
                     keccak256(
                         abi.encode(
                             keccak256(
-                                "Ragequit(address treasury,address token,Withdrawal withdrawals,uint256 quitAmount,uint256 nonce)"
+                                "Ragequit(address treasury,address token,uint256 id,Withdrawal withdrawals,uint256 quitAmount,uint256 nonce)"
                             ),
                             treasury,
                             token,
+                            id,
                             withdrawals,
                             quitAmount,
                             nonces[redeemer]++
@@ -414,7 +415,7 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
             _recoverSig(hash, redeemer, v, r, s);
         }
 
-        emit Ragequit(redeemer, treasury, token, withdrawals, quitAmount);
+        emit Ragequit(redeemer, treasury, token, id, withdrawals, quitAmount);
 
         uint256 supply;
 
