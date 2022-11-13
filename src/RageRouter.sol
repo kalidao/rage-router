@@ -26,10 +26,8 @@ enum Standard {
 
 struct Redemption {
     address burner;
-    address token;
-    uint88 start;
+    int88 trigger;
     Standard std;
-    uint256 id;
 }
 
 struct Withdrawal {
@@ -52,12 +50,13 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
         address indexed token,
         Standard std,
         uint256 id,
-        uint256 start
+        int88 trigger
     );
 
     event Ragequit(
         address indexed redeemer,
         address indexed treasury,
+        address indexed token,
         Withdrawal[] withdrawals,
         uint256 amount
     );
@@ -66,7 +65,7 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
     /// Custom Errors
     /// -----------------------------------------------------------------------
 
-    error NotStarted();
+    error Triggered();
 
     error InvalidAssetOrder();
 
@@ -78,7 +77,8 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
     /// Ragequit Storage
     /// -----------------------------------------------------------------------
 
-    mapping(address => Redemption) public redemptions;
+    mapping(address => mapping(address => mapping(uint256 => Redemption)))
+        public redemptions;
 
     /// -----------------------------------------------------------------------
     /// EIP-712 Storage/Logic
@@ -130,52 +130,126 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
 
     /// @notice Configuration for ragequittable treasuries.
     /// @param burner The redemption sink for burnt `token`.
-    /// @param token The redemption `token` that will be burnt.
+    /// @param token The redemption asset that will be burnt.
     /// @param std The EIP interface for the redemption `token`.
     /// @param id The ID to set redemption configuration against.
-    /// @param start The unix timestamp at which redemption starts.
+    /// @param trigger The unix time at which redemption triggers.
     /// @dev The caller of this function will be set as the `treasury`.
     /// If `burner` is zero address, ragequit will trigger `token` burn.
     /// Otherwise, the user will have `token` pulled to `burner` and supply
     /// will be calculated with respect to `burner` balance before ragequit.
     /// `id` will be used if the `token` follows ERC1155 std. Kali slays Moloch.
+    /// If negative `trigger`, it will be understood as deadline rather than start.
     function setRagequit(
         address burner,
         address token,
         Standard std,
         uint256 id,
-        uint256 start
+        int88 trigger
     ) public payable virtual {
-        redemptions[msg.sender] = Redemption({
+        redemptions[msg.sender][token][id] = Redemption({
             burner: burner,
-            token: token,
-            start: uint88(start),
-            std: std,
-            id: id
+            trigger: trigger,
+            std: std
         });
 
-        emit RagequitSet(msg.sender, burner, token, std, id, start);
+        emit RagequitSet(msg.sender, burner, token, std, id, trigger);
+    }
+
+    /// -----------------------------------------------------------------------
+    /// Configuration Signature Logic
+    /// -----------------------------------------------------------------------
+
+    /// @notice Configuration for ragequittable treasuries.
+    /// @param treasury The vault with redemption 'assets'.
+    /// @param burner The redemption sink for burnt `token`.
+    /// @param token The redemption asset that will be burnt.
+    /// @param std The EIP interface for the redemption `token`.
+    /// @param id The ID to set redemption configuration against.
+    /// @param trigger The unix time at which redemption triggers.
+    /// @dev The caller of this function will be set as the `treasury`.
+    /// If `burner` is zero address, ragequit will trigger `token` burn.
+    /// Otherwise, the user will have `token` pulled to `burner` and supply
+    /// will be calculated with respect to `burner` balance before ragequit.
+    /// `id` will be used if the `token` follows ERC1155 std. Kali slays Moloch.
+    /// @param v Must produce valid secp256k1 signature from the `owner` along with `r` and `s`.
+    /// @param r Must produce valid secp256k1 signature from the `owner` along with `v` and `s`.
+    /// @param s Must produce valid secp256k1 signature from the `owner` along with `r` and `v`.
+    function setRagequit(
+        address treasury,
+        address burner,
+        address token,
+        Standard std,
+        uint256 id,
+        int88 trigger,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public payable virtual nonReentrant {
+        // Unchecked because the only math done is incrementing
+        // the treasury's nonce which cannot realistically overflow.
+        unchecked {
+            bytes32 hash = keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    DOMAIN_SEPARATOR(),
+                    keccak256(
+                        abi.encode(
+                            keccak256(
+                                "SetRagequit(address treasury,address burner,address token,uint8 std,uint256 id,int88 trigger)"
+                            ),
+                            treasury,
+                            burner,
+                            token,
+                            std,
+                            id,
+                            trigger,
+                            nonces[treasury]++
+                        )
+                    )
+                )
+            );
+
+            // Check signature recovery.
+            _recoverSig(hash, treasury, v, r, s);
+        }
+
+        redemptions[treasury][token][id] = Redemption({
+            burner: burner,
+            trigger: trigger,
+            std: std
+        });
+
+        emit RagequitSet(treasury, burner, token, std, id, trigger);
     }
 
     /// -----------------------------------------------------------------------
     /// Ragequit Logic
     /// -----------------------------------------------------------------------
 
-    /// @notice Allows ragequit redemption against `treasury`.
-    /// @param treasury The vault holding `assets` for redemption.
+    /// @notice Allows asset redemption against `treasury`.
+    /// @param treasury The vault with redemption `assets`.
+    /// @param token The redemption asset that will be burnt.
+    /// @param id The ID set for the burn of the redemption asset.
     /// @param withdrawals Withdrawal instructions for `treasury`.
-    /// @param quitAmount The amount of redemption tokens to be burned.
+    /// @param quitAmount The amount of redemption asset to be burned.
     /// @dev `quitAmount` acts as the token ID where redemption is ERC721.
     function ragequit(
         address treasury,
+        address token,
+        uint256 id,
         Withdrawal[] calldata withdrawals,
         uint256 quitAmount
     ) public payable virtual nonReentrant {
-        Redemption storage red = redemptions[treasury];
+        Redemption storage red = redemptions[treasury][token][id];
 
-        if (block.timestamp < red.start) revert NotStarted();
+        uint88 trigger = uint88(red.trigger);
 
-        emit Ragequit(msg.sender, treasury, withdrawals, quitAmount);
+        if (
+            trigger >= 0 ? block.timestamp < trigger : block.timestamp > trigger
+        ) revert Triggered();
+
+        emit Ragequit(msg.sender, treasury, token, withdrawals, quitAmount);
 
         uint256 supply;
 
@@ -183,58 +257,58 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
         // and whether `burner` is zero address.
         if (red.std == Standard.ERC20) {
             if (red.burner == address(0)) {
-                supply = TokenSupply(red.token).totalSupply();
+                supply = TokenSupply(token).totalSupply();
 
-                TokenBurn(red.token).burnFrom(msg.sender, quitAmount);
+                TokenBurn(token).burnFrom(msg.sender, quitAmount);
             } else {
                 // The `burner` balance cannot exceed total supply.
                 unchecked {
                     supply =
-                        TokenSupply(red.token).totalSupply() -
-                        TokenSupply(red.token).balanceOf(red.burner);
+                        TokenSupply(token).totalSupply() -
+                        TokenSupply(token).balanceOf(red.burner);
                 }
 
-                safeTransferFrom(red.token, msg.sender, red.burner, quitAmount);
+                safeTransferFrom(token, msg.sender, red.burner, quitAmount);
             }
         } else if (red.std == Standard.ERC721) {
             // Use `quitAmount` as `id`.
-            if (msg.sender != TokenSupply(red.token).ownerOf(quitAmount))
+            if (msg.sender != TokenSupply(token).ownerOf(quitAmount))
                 revert NotOwner();
 
             if (red.burner == address(0)) {
-                supply = TokenSupply(red.token).totalSupply();
+                supply = TokenSupply(token).totalSupply();
 
-                TokenBurn(red.token).burn(quitAmount);
+                TokenBurn(token).burn(quitAmount);
             } else {
                 // The `burner` balance cannot exceed total supply.
                 unchecked {
                     supply =
-                        TokenSupply(red.token).totalSupply() -
-                        TokenSupply(red.token).balanceOf(red.burner);
+                        TokenSupply(token).totalSupply() -
+                        TokenSupply(token).balanceOf(red.burner);
                 }
 
-                safeTransferFrom(red.token, msg.sender, red.burner, quitAmount);
+                safeTransferFrom(token, msg.sender, red.burner, quitAmount);
             }
 
             // Overwrite `quitAmount` `id` to 1 for single NFT burn.
             quitAmount = 1;
         } else {
             if (red.burner == address(0)) {
-                supply = TokenSupply(red.token).totalSupply(red.id);
+                supply = TokenSupply(token).totalSupply(id);
 
-                TokenBurn(red.token).burn(msg.sender, red.id, quitAmount);
+                TokenBurn(token).burn(msg.sender, id, quitAmount);
             } else {
                 // The `burner` balance cannot exceed total supply.
                 unchecked {
                     supply =
-                        TokenSupply(red.token).totalSupply(red.id) -
-                        TokenSupply(red.token).balanceOf(red.burner, red.id);
+                        TokenSupply(token).totalSupply(id) -
+                        TokenSupply(token).balanceOf(red.burner, id);
                 }
 
-                ERC1155STF(red.token).safeTransferFrom(
+                ERC1155STF(token).safeTransferFrom(
                     msg.sender,
                     red.burner,
-                    red.id,
+                    id,
                     quitAmount,
                     ""
                 );
@@ -292,25 +366,33 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
     /// -----------------------------------------------------------------------
 
     /// @notice Allows ragequit redemption against `treasury`.
-    /// @param treasury The vault holding `assets` for redemption.
+    /// @param treasury The vault with redemption `assets`.
+    /// @param token The redemption asset that will be burnt.
+    /// @param id The ID set for the burn of the redemption asset.
     /// @param withdrawals Withdrawal instructions for `treasury`.
-    /// @param quitAmount The amount of redemption tokens to be burned.
+    /// @param quitAmount The amount of redemption asset to be burned.
     /// @dev `quitAmount` acts as the token ID where redemption is ERC721.
     /// @param v Must produce valid secp256k1 signature from the `owner` along with `r` and `s`.
     /// @param r Must produce valid secp256k1 signature from the `owner` along with `v` and `s`.
     /// @param s Must produce valid secp256k1 signature from the `owner` along with `r` and `v`.
-    function ragequitBySig(
+    function ragequit(
         address redeemer,
         address treasury,
+        address token,
+        uint256 id,
         Withdrawal[] calldata withdrawals,
         uint256 quitAmount,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) public payable virtual nonReentrant {
-        Redemption storage red = redemptions[treasury];
+        Redemption storage red = redemptions[treasury][token][id];
 
-        if (block.timestamp < red.start) revert NotStarted();
+        uint88 trigger = uint88(red.trigger);
+
+        if (
+            trigger >= 0 ? block.timestamp < trigger : block.timestamp > trigger
+        ) revert Triggered();
 
         // Unchecked because the only math done is incrementing
         // the redeemer's nonce which cannot realistically overflow.
@@ -322,9 +404,10 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
                     keccak256(
                         abi.encode(
                             keccak256(
-                                "Ragequit(address treasury,Withdrawal withdrawals,uint256 quitAmount,uint256 nonce)"
+                                "Ragequit(address treasury,address token,Withdrawal withdrawals,uint256 quitAmount,uint256 nonce)"
                             ),
                             treasury,
+                            token,
                             withdrawals,
                             quitAmount,
                             nonces[redeemer]++
@@ -337,7 +420,7 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
             _recoverSig(hash, redeemer, v, r, s);
         }
 
-        emit Ragequit(redeemer, treasury, withdrawals, quitAmount);
+        emit Ragequit(redeemer, treasury, token, withdrawals, quitAmount);
 
         uint256 supply;
 
@@ -345,58 +428,58 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
         // and whether `burner` is zero address.
         if (red.std == Standard.ERC20) {
             if (red.burner == address(0)) {
-                supply = TokenSupply(red.token).totalSupply();
+                supply = TokenSupply(token).totalSupply();
 
-                TokenBurn(red.token).burnFrom(redeemer, quitAmount);
+                TokenBurn(token).burnFrom(redeemer, quitAmount);
             } else {
                 // The `burner` balance cannot exceed total supply.
                 unchecked {
                     supply =
-                        TokenSupply(red.token).totalSupply() -
-                        TokenSupply(red.token).balanceOf(red.burner);
+                        TokenSupply(token).totalSupply() -
+                        TokenSupply(token).balanceOf(red.burner);
                 }
 
-                safeTransferFrom(red.token, redeemer, red.burner, quitAmount);
+                safeTransferFrom(token, redeemer, red.burner, quitAmount);
             }
         } else if (red.std == Standard.ERC721) {
             // Use `quitAmount` as `id`.
-            if (redeemer != TokenSupply(red.token).ownerOf(quitAmount))
+            if (redeemer != TokenSupply(token).ownerOf(quitAmount))
                 revert NotOwner();
 
             if (red.burner == address(0)) {
-                supply = TokenSupply(red.token).totalSupply();
+                supply = TokenSupply(token).totalSupply();
 
-                TokenBurn(red.token).burn(quitAmount);
+                TokenBurn(token).burn(quitAmount);
             } else {
                 // The `burner` balance cannot exceed total supply.
                 unchecked {
                     supply =
-                        TokenSupply(red.token).totalSupply() -
-                        TokenSupply(red.token).balanceOf(red.burner);
+                        TokenSupply(token).totalSupply() -
+                        TokenSupply(token).balanceOf(red.burner);
                 }
 
-                safeTransferFrom(red.token, redeemer, red.burner, quitAmount);
+                safeTransferFrom(token, redeemer, red.burner, quitAmount);
             }
 
             // Overwrite `quitAmount` `id` to 1 for single NFT burn.
             quitAmount = 1;
         } else {
             if (red.burner == address(0)) {
-                supply = TokenSupply(red.token).totalSupply(red.id);
+                supply = TokenSupply(token).totalSupply(id);
 
-                TokenBurn(red.token).burn(redeemer, red.id, quitAmount);
+                TokenBurn(token).burn(redeemer, id, quitAmount);
             } else {
                 // The `burner` balance cannot exceed total supply.
                 unchecked {
                     supply =
-                        TokenSupply(red.token).totalSupply(red.id) -
-                        TokenSupply(red.token).balanceOf(red.burner, red.id);
+                        TokenSupply(token).totalSupply(id) -
+                        TokenSupply(token).balanceOf(red.burner, id);
                 }
 
-                ERC1155STF(red.token).safeTransferFrom(
+                ERC1155STF(token).safeTransferFrom(
                     redeemer,
                     red.burner,
-                    red.id,
+                    id,
                     quitAmount,
                     ""
                 );

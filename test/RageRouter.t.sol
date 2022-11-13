@@ -33,7 +33,9 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
     address internal burner;
     address internal immutable treasury = address(this);
 
-    uint256 internal start;
+    int88 internal start;
+
+    uint256 internal id;
 
     /// -----------------------------------------------------------------------
     /// Setup
@@ -101,7 +103,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
         mockDai.approve(address(router), 1000 ether);
         mockWeth.approve(address(router), 10 ether);
 
-        // Set redemption start.
+        // Set default redemption trigger (start).
         start = 1000;
     }
 
@@ -141,7 +143,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for wETH.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -182,7 +184,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for wETH/Dai.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -223,7 +225,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for wETH.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 0);
+        router.ragequit(treasury, address(mockGovERC721), id, draw, 0);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -265,7 +267,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for wETH/Dai.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 0);
+        router.ragequit(treasury, address(mockGovERC721), id, draw, 0);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -305,7 +307,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for wETH.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC1155), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -346,7 +348,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for wETH/Dai.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC1155), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -386,7 +388,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for mock1155.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -403,7 +405,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for mock1155.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -443,7 +445,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for mockwETH/mock1155.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -484,7 +486,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for wETH.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -497,7 +499,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock bob to redeem gov for wETH.
         startHoax(bob, bob, type(uint256).max);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -510,7 +512,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for wETH.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -524,13 +526,13 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
         // Expect revert in underflow for Alice repeat.
         startHoax(alice, alice, type(uint256).max);
         vm.expectRevert(stdError.arithmeticError);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 25 ether);
         vm.stopPrank();
 
         // Mock bob to redeem gov for wETH.
         // This completes redemption.
         startHoax(bob, bob, type(uint256).max);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -568,7 +570,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for wETH.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 50 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 50 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -582,7 +584,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
         // Mock bob to redeem gov for wETH.
         // This completes redemption.
         startHoax(bob, bob, type(uint256).max);
-        router.ragequit(treasury, draw, 50 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 50 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -619,10 +621,10 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
         draw[0] = Withdrawal(address(mockWeth), Standard.ERC20, 0);
 
         // Mock alice to redeem gov for wETH too early.
-        vm.warp(start - 1);
-        vm.expectRevert(bytes4(keccak256("NotStarted()")));
+        vm.warp(uint88(start) - 1);
+        vm.expectRevert(bytes4(keccak256("Triggered()")));
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 50 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 50 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -664,7 +666,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
         // Mock alice to redeem gov for wETH/Dai.
         startHoax(alice, alice, type(uint256).max);
         vm.expectRevert(bytes4(keccak256("InvalidAssetOrder()")));
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -708,7 +710,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for wETH.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -752,7 +754,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for wETH/Dai.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -796,7 +798,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for wETH.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 0);
+        router.ragequit(treasury, address(mockGovERC721), id, draw, 0);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -840,7 +842,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for wETH/Dai.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 0);
+        router.ragequit(treasury, address(mockGovERC721), id, draw, 0);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -882,7 +884,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for wETH.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC1155), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -926,7 +928,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for wETH/Dai.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC1155), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -971,7 +973,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for wETH.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -987,7 +989,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock bob to redeem gov for wETH.
         startHoax(bob, bob, type(uint256).max);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -1003,7 +1005,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for wETH.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -1020,13 +1022,13 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
         // Expect revert in underflow for Alice repeat.
         startHoax(alice, alice, type(uint256).max);
         vm.expectRevert(0x7939f424);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 25 ether);
         vm.stopPrank();
 
         // Mock bob to redeem gov for wETH.
         // This completes redemption.
         startHoax(bob, bob, type(uint256).max);
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -1067,7 +1069,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
 
         // Mock alice to redeem gov for wETH.
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 50 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 50 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -1084,7 +1086,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
         // Mock bob to redeem gov for wETH.
         // This completes redemption.
         startHoax(bob, bob, type(uint256).max);
-        router.ragequit(treasury, draw, 50 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 50 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -1124,10 +1126,10 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
         draw[0] = Withdrawal(address(mockWeth), Standard.ERC20, 0);
 
         // Mock alice to redeem gov for wETH too early.
-        vm.warp(start - 1);
-        vm.expectRevert(bytes4(keccak256("NotStarted()")));
+        vm.warp(uint88(start) - 1);
+        vm.expectRevert(bytes4(keccak256("Triggered()")));
         startHoax(alice, alice, type(uint256).max);
-        router.ragequit(treasury, draw, 50 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 50 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
@@ -1169,7 +1171,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
         // Mock alice to redeem gov for wETH/Dai.
         startHoax(alice, alice, type(uint256).max);
         vm.expectRevert(bytes4(keccak256("InvalidAssetOrder()")));
-        router.ragequit(treasury, draw, 25 ether);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 25 ether);
         vm.stopPrank();
 
         // Check resulting gov balances.
