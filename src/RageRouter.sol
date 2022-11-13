@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.4;
 
-/// @dev Contract Helpers.
+/// @dev Contract helpers.
 import {ERC1155STF} from "./utils/ERC1155STF.sol";
 import {TokenBurn} from "./utils/TokenBurn.sol";
 import {TokenSupply} from "./utils/TokenSupply.sol";
