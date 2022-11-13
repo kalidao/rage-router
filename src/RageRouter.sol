@@ -172,6 +172,7 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
     /// Otherwise, the user will have `token` pulled to `burner` and supply
     /// will be calculated with respect to `burner` balance before ragequit.
     /// `id` will be used if the `token` follows ERC1155 std. Kali slays Moloch.
+    /// If negative `trigger`, it will be understood as deadline rather than start.
     /// @param v Must produce valid secp256k1 signature from the `owner` along with `r` and `s`.
     /// @param r Must produce valid secp256k1 signature from the `owner` along with `v` and `s`.
     /// @param s Must produce valid secp256k1 signature from the `owner` along with `r` and `v`.
