@@ -167,12 +167,6 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
     /// @param std The EIP interface for the redemption `token`.
     /// @param id The ID to set redemption configuration against.
     /// @param trigger The unix time at which redemption triggers.
-    /// @dev The caller of this function will be set as the `treasury`.
-    /// If `burner` is zero address, ragequit will trigger `token` burn.
-    /// Otherwise, the user will have `token` pulled to `burner` and supply
-    /// will be calculated with respect to `burner` balance before ragequit.
-    /// `id` will be used if the `token` follows ERC1155 std. Kali slays Moloch.
-    /// If negative `trigger`, it will be understood as deadline rather than start.
     /// @param v Must produce valid secp256k1 signature from the `owner` along with `r` and `s`.
     /// @param r Must produce valid secp256k1 signature from the `owner` along with `v` and `s`.
     /// @param s Must produce valid secp256k1 signature from the `owner` along with `r` and `v`.
@@ -372,7 +366,6 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
     /// @param id The ID set for the burn of the redemption asset.
     /// @param withdrawals Withdrawal instructions for `treasury`.
     /// @param quitAmount The amount of redemption asset to be burned.
-    /// @dev `quitAmount` acts as the token ID where redemption is ERC721.
     /// @param v Must produce valid secp256k1 signature from the `owner` along with `r` and `s`.
     /// @param r Must produce valid secp256k1 signature from the `owner` along with `v` and `s`.
     /// @param s Must produce valid secp256k1 signature from the `owner` along with `r` and `v`.
