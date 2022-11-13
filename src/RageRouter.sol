@@ -58,7 +58,7 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
         address indexed treasury,
         address indexed token,
         Withdrawal[] withdrawals,
-        uint256 amount
+        uint256 quitAmount
     );
 
     /// -----------------------------------------------------------------------
