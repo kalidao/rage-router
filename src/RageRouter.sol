@@ -241,7 +241,7 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
         if (
             red.trigger >= 0
                 ? block.timestamp < uint88(red.trigger)
-                : block.timestamp > uint88(red.trigger)
+                : block.timestamp > uint88(-red.trigger)
         ) revert Triggered();
 
         emit Ragequit(msg.sender, treasury, token, id, withdrawals, quitAmount);
@@ -385,7 +385,7 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
         if (
             red.trigger >= 0
                 ? block.timestamp < uint88(red.trigger)
-                : block.timestamp > uint88(red.trigger)
+                : block.timestamp > uint88(-red.trigger)
         ) revert Triggered();
 
         // Unchecked because the only math done is incrementing

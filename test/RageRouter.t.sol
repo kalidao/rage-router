@@ -11,7 +11,7 @@ import {MockERC1271Wallet} from "@solbase/test/utils/mocks/MockERC1271Wallet.sol
 
 import "@std/Test.sol";
 
-contract RageRouterTest is ERC1155TokenReceiver, Test {
+contract RageRouterTest is RageRouter, ERC1155TokenReceiver, Test {
     using stdStorage for StdStorage;
 
     RageRouter router;
@@ -1197,7 +1197,7 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
             "Ragequit(address treasury,address token,uint256 id,Withdrawal withdrawals,uint256 quitAmount,uint256 nonce)"
         );
 
-    function testRedeemERC20WithSig() public payable {
+    function testRedeemWithSig() public payable {
         uint256 alicePrivateKey = 0xDEAD;
         uint256 charliePrivateKey = 0xDEAF;
         address charlie = vm.addr(0xDEAF);
@@ -1303,5 +1303,194 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
         // Check resulting redeemed wETH.
         assert(mockWeth.balanceOf(alice) == 2.5 ether);
         assert(mockWeth.balanceOf(charlie) == 7.5 ether);
+    }
+
+    function testCannotRedeemWithInvalidSig() public payable {
+        uint256 alicePrivateKey = 0xDEAD;
+        uint256 charliePrivateKey = 0xDEAF;
+        address charlie = vm.addr(0xDEAF);
+
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+
+        (v, r, s) = vm.sign(
+            charliePrivateKey,
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    router.DOMAIN_SEPARATOR(),
+                    keccak256(
+                        abi.encode(
+                            SET_RAGEQUIT_TYPEHASH,
+                            address(0),
+                            address(mockGovERC20),
+                            Standard.ERC20,
+                            0,
+                            start,
+                            0
+                        )
+                    )
+                )
+            )
+        );
+
+        startHoax(bob, bob, type(uint256).max);
+        vm.expectRevert(InvalidSig.selector);
+        router.setRagequit(
+            address(0),
+            address(0),
+            address(mockGovERC20),
+            Standard.ERC20,
+            0,
+            start,
+            v,
+            r,
+            s
+        );
+
+        vm.expectRevert(InvalidSig.selector);
+        router.setRagequit(
+            alice,
+            address(0),
+            address(mockGovERC20),
+            Standard.ERC20,
+            0,
+            start,
+            v,
+            r,
+            s
+        );
+
+        router.setRagequit(
+            charlie,
+            address(0),
+            address(mockGovERC20),
+            Standard.ERC20,
+            0,
+            start,
+            v,
+            r,
+            s
+        );
+        vm.stopPrank();
+
+        vm.warp(1641070800);
+
+        mockWeth.mint(charlie, 10 ether);
+
+        vm.prank(charlie);
+        mockWeth.approve(address(router), 10 ether);
+
+        // Check initial gov balances.
+        assert(mockGovERC20.balanceOf(alice) == 50 ether);
+        assert(mockGovERC20.totalSupply() == 100 ether);
+
+        // Check initial unredeemed wETH.
+        assert(mockWeth.balanceOf(alice) == 0 ether);
+        assert(mockWeth.balanceOf(charlie) == 10 ether);
+
+        // Set up wETH claim.
+        Withdrawal[] memory draw = new Withdrawal[](1);
+        draw[0] = Withdrawal(address(mockWeth), Standard.ERC20, 0);
+
+        (v, r, s) = vm.sign(
+            alicePrivateKey,
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    router.DOMAIN_SEPARATOR(),
+                    keccak256(
+                        abi.encode(
+                            RAGEQUIT_TYPEHASH,
+                            charlie,
+                            address(mockGovERC20),
+                            0,
+                            draw,
+                            25 ether,
+                            0
+                        )
+                    )
+                )
+            )
+        );
+
+        // Mock bob to redeem alice's gov for wETH.
+        startHoax(bob, bob, type(uint256).max);
+        vm.expectRevert(InvalidSig.selector);
+        router.ragequit(
+            address(0),
+            charlie,
+            address(mockGovERC20),
+            id,
+            draw,
+            25 ether,
+            v,
+            r,
+            s
+        );
+
+        vm.expectRevert(InvalidSig.selector);
+        router.ragequit(
+            bob,
+            charlie,
+            address(mockGovERC20),
+            id,
+            draw,
+            25 ether,
+            v,
+            r,
+            s
+        );
+
+        router.ragequit(
+            alice,
+            charlie,
+            address(mockGovERC20),
+            id,
+            draw,
+            25 ether,
+            v,
+            r,
+            s
+        );
+        vm.stopPrank();
+
+        // Check resulting gov balances.
+        assert(mockGovERC20.balanceOf(alice) == 25 ether);
+        assert(mockGovERC20.totalSupply() == 75 ether);
+
+        // Check resulting redeemed wETH.
+        assert(mockWeth.balanceOf(alice) == 2.5 ether);
+        assert(mockWeth.balanceOf(charlie) == 7.5 ether);
+    }
+
+    function testCannotRedeemPastDeadline() public payable {
+        router.setRagequit(
+            address(0),
+            address(mockGovERC20),
+            Standard.ERC20,
+            0,
+            -start
+        );
+        vm.warp(1001);
+
+        // Check initial gov balances.
+        assert(mockGovERC20.balanceOf(alice) == 50 ether);
+        assert(mockGovERC20.totalSupply() == 100 ether);
+
+        // Check initial unredeemed wETH.
+        assert(mockWeth.balanceOf(alice) == 0 ether);
+        assert(mockWeth.balanceOf(treasury) == 10 ether);
+
+        // Set up wETH claim.
+        Withdrawal[] memory draw = new Withdrawal[](1);
+        draw[0] = Withdrawal(address(mockWeth), Standard.ERC20, 0);
+
+        // Mock alice to redeem gov for wETH.
+        startHoax(alice, alice, type(uint256).max);
+        vm.expectRevert(Triggered.selector);
+        router.ragequit(treasury, address(mockGovERC20), id, draw, 25 ether);
+        vm.stopPrank();
     }
 }
