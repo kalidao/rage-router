@@ -28,8 +28,8 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
     Standard internal constant erc721std = Standard.ERC721;
     Standard internal constant erc1155std = Standard.ERC1155;
 
-    address internal immutable alice = vm.addr(1);
-    address internal immutable bob = vm.addr(2);
+    address internal immutable alice = vm.addr(0xDEAD);
+    address internal immutable bob = vm.addr(0xBEEF);
     address internal burner;
     address internal immutable treasury = address(this);
 
@@ -1185,5 +1185,123 @@ contract RageRouterTest is ERC1155TokenReceiver, Test {
         // Check resulting redeemed Dai.
         assert(mockDai.balanceOf(alice) == 0 ether);
         assert(mockDai.balanceOf(treasury) == 1000 ether);
+    }
+
+    bytes32 internal constant SET_RAGEQUIT_TYPEHASH =
+        keccak256(
+            "SetRagequit(address burner,address token,uint8 std,uint256 id,int88 trigger,uint256 nonce)"
+        );
+
+    bytes32 internal constant RAGEQUIT_TYPEHASH =
+        keccak256(
+            "Ragequit(address treasury,address token,uint256 id,Withdrawal withdrawals,uint256 quitAmount,uint256 nonce)"
+        );
+
+    function testRedeemERC20WithSig() public payable {
+        uint256 alicePrivateKey = 0xDEAD;
+        uint256 charliePrivateKey = 0xDEAF;
+        address charlie = vm.addr(0xDEAF);
+
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+
+        (v, r, s) = vm.sign(
+            charliePrivateKey,
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    router.DOMAIN_SEPARATOR(),
+                    keccak256(
+                        abi.encode(
+                            SET_RAGEQUIT_TYPEHASH,
+                            address(0),
+                            address(mockGovERC20),
+                            Standard.ERC20,
+                            0,
+                            start,
+                            0
+                        )
+                    )
+                )
+            )
+        );
+
+        startHoax(bob, bob, type(uint256).max);
+        router.setRagequit(
+            charlie,
+            address(0),
+            address(mockGovERC20),
+            Standard.ERC20,
+            0,
+            start,
+            v,
+            r,
+            s
+        );
+        vm.stopPrank();
+
+        vm.warp(1641070800);
+
+        mockWeth.mint(charlie, 10 ether);
+
+        vm.prank(charlie);
+        mockWeth.approve(address(router), 10 ether);
+
+        // Check initial gov balances.
+        assert(mockGovERC20.balanceOf(alice) == 50 ether);
+        assert(mockGovERC20.totalSupply() == 100 ether);
+
+        // Check initial unredeemed wETH.
+        assert(mockWeth.balanceOf(alice) == 0 ether);
+        assert(mockWeth.balanceOf(charlie) == 10 ether);
+
+        // Set up wETH claim.
+        Withdrawal[] memory draw = new Withdrawal[](1);
+        draw[0] = Withdrawal(address(mockWeth), Standard.ERC20, 0);
+
+        (v, r, s) = vm.sign(
+            alicePrivateKey,
+            keccak256(
+                abi.encodePacked(
+                    "\x19\x01",
+                    router.DOMAIN_SEPARATOR(),
+                    keccak256(
+                        abi.encode(
+                            RAGEQUIT_TYPEHASH,
+                            charlie,
+                            address(mockGovERC20),
+                            0,
+                            draw,
+                            25 ether,
+                            0
+                        )
+                    )
+                )
+            )
+        );
+
+        // Mock bob to redeem alice's gov for wETH.
+        startHoax(bob, bob, type(uint256).max);
+        router.ragequit(
+            alice,
+            charlie,
+            address(mockGovERC20),
+            id,
+            draw,
+            25 ether,
+            v,
+            r,
+            s
+        );
+        vm.stopPrank();
+
+        // Check resulting gov balances.
+        assert(mockGovERC20.balanceOf(alice) == 25 ether);
+        assert(mockGovERC20.totalSupply() == 75 ether);
+
+        // Check resulting redeemed wETH.
+        assert(mockWeth.balanceOf(alice) == 2.5 ether);
+        assert(mockWeth.balanceOf(charlie) == 7.5 ether);
     }
 }
