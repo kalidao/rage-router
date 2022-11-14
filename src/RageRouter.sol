@@ -539,6 +539,7 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
         address signer;
 
         // Perform signature recovery via ecrecover.
+        /// @solidity memory-safe-assembly
         assembly {
             // Copy the free memory pointer so that we can restore it later.
             let m := mload(0x40)
@@ -572,6 +573,7 @@ contract RageRouter is SelfPermit, Multicallable, ReentrancyGuard {
         if (user != signer) {
             bool valid;
 
+            /// @solidity memory-safe-assembly
             assembly {
                 // Load the free memory pointer.
                 // Simply using the free memory usually costs less if many slots are needed.
